@@ -1,0 +1,96 @@
+# WashTrack — Hostel Laundry Portal
+
+A simple, free laundry pickup & tracking web app built for college hostellers.
+Students place an order with item counts, staff move it through the wash cycle,
+and everyone can see live status — no payments, no pricing, just pickup tracking.
+
+## Tech Stack
+- **Backend:** Flask (Python)
+- **Database:** SQLite (via the built-in `sqlite3` module)
+- **Frontend:** Jinja2 templates + Tailwind CSS (CDN)
+
+## Project Structure
+```
+washtrack/
+├── app.py              # Flask routes
+├── database.py         # SQLite helper functions
+├── schema.sql          # Database schema (orders + order_items)
+├── requirements.txt
+└── templates/
+    ├── base.html        # Shared layout, login-aware header, flash messages
+    ├── login.html       # Login form (students + staff, same form)
+    ├── register.html    # Student self-registration form
+    ├── index.html       # Student order form + live status board
+    └── admin.html       # Staff dashboard (grouped by pickup slot)
+```
+
+## Setup & Run
+
+1. **Create a virtual environment (recommended)**
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate      # Windows: venv\Scripts\activate
+   ```
+
+2. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Run the app**
+   ```bash
+   python app.py
+   ```
+   The database file `washtrack.db` is created automatically on first run
+   (via `database.ensure_db_exists()` in `app.py`), using `schema.sql`. A
+   default staff login is seeded automatically at the same time (see below).
+
+4. **Open in your browser** at http://127.0.0.1:5000/ — you'll land on the
+   login page. From there:
+   - **New students** click "Create a student account" to sign up, then log in.
+   - **Staff** log in with the seeded staff account below.
+
+## Login Accounts
+
+| Role    | Username | Password      | How it's created                          |
+|---------|----------|---------------|--------------------------------------------|
+| Staff   | `staff`  | `laundry123`  | Auto-seeded the first time the DB is built |
+| Student | *(any)*  | *(any)*       | Self-registered via the Sign Up page       |
+
+Change `DEFAULT_STAFF_USERNAME` / `DEFAULT_STAFF_PASSWORD` at the top of
+`database.py` before real-world use, and consider adding more staff
+accounts directly via `database.create_user(..., role="staff")`.
+
+## Access Control
+- `/dashboard` (student order form + live board) is only reachable by
+  accounts with `role = "student"`.
+- `/admin` (staff management dashboard) is only reachable by accounts with
+  `role = "staff"`.
+- Every route (except `/login` and `/register`) is protected by a
+  `login_required(role=...)` decorator in `app.py`. Logged-out visitors are
+  sent to `/login`; logged-in users who hit the *wrong* dashboard are
+  bounced back to the one that matches their role — they never see an
+  error page, just the correct dashboard.
+- A student's name/room/phone are read from their account on the server
+  side when an order is placed — the order form itself doesn't collect
+  them, so a student can never place an order under someone else's name.
+
+## Resetting the Database
+Delete `washtrack.db` and restart the app — it will be recreated automatically
+with fresh, empty tables (and the default staff account will be re-seeded).
+
+## Features
+- **Login / Sign Up** — students self-register with name, room, phone,
+  username, and password (hashed with Werkzeug, never stored in plain
+  text). Staff use a pre-seeded account.
+- **Student Dashboard (`/dashboard`)** — a friendly form to submit a pickup
+  request (pickup slot + per-item counts for Shirts, Pants, Bedding, Socks,
+  Others) plus a live board of all active hostel orders, with the
+  logged-in student's own orders highlighted.
+- **Staff Dashboard (`/admin`)** — quick metric cards (Pending Pickup,
+  Washing, Ready for Collection, Today's Orders) and orders grouped by
+  pickup slot, each with a one-click button to advance its status:
+  `Pending Pickup → Washing → Ready for Collection → Collected`.
+- **Item-level tracking** — every order stores exact counts per clothing
+  type so nothing gets lost in the wash.
+- 100% free for residents — no payment or pricing logic anywhere.
